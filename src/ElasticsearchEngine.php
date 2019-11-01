@@ -15,7 +15,7 @@ class ElasticsearchEngine extends Engine
      * @var string
      */
     protected $index;
-    
+
     /**
      * Elastic where the instance of Elastic|\Elasticsearch\Client is stored.
      *
@@ -45,12 +45,14 @@ class ElasticsearchEngine extends Engine
     {
         $params['body'] = [];
 
-        $models->each(function($model) use (&$params)
+        $index = $this->index ? : $models[0]->searchableAs();
+
+        $models->each(function($model) use (&$params, $index)
         {
             $params['body'][] = [
                 'update' => [
                     '_id' => $model->getKey(),
-                    '_index' => $this->index,
+                    '_index' => $index,
                     '_type' => $model->searchableAs(),
                 ]
             ];
@@ -60,7 +62,11 @@ class ElasticsearchEngine extends Engine
             ];
         });
 
-        $this->elastic->bulk($params);
+        $flag = ($this->elastic->bulk($params))['items'][0]['update'];
+
+        if(in_array($flag['status'], [400])) {
+	        abort($flag['status'], $flag['error']['reason']);
+        }
     }
 
     /**
@@ -72,13 +78,14 @@ class ElasticsearchEngine extends Engine
     public function delete($models)
     {
         $params['body'] = [];
+	    $index = $this->index ? : $models[0]->searchableAs();
 
-        $models->each(function($model) use (&$params)
+        $models->each(function($model) use (&$params, $index)
         {
             $params['body'][] = [
                 'delete' => [
                     '_id' => $model->getKey(),
-                    '_index' => $this->index,
+                    '_index' => $index,
                     '_type' => $model->searchableAs(),
                 ]
             ];
@@ -131,9 +138,12 @@ class ElasticsearchEngine extends Engine
      */
     protected function performSearch(Builder $builder, array $options = [])
     {
+
+	    $index = $this->index ? : $builder->model->searchableAs();
+
         $params = [
-            'index' => $this->index,
-            'type' => $builder->index ?: $builder->model->searchableAs(),
+            'index' => $index,
+            'type' => $index,
             'body' => [
                 'query' => [
                     'bool' => [
