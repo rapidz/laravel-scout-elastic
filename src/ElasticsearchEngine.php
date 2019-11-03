@@ -46,27 +46,28 @@ class ElasticsearchEngine extends Engine
     {
         $params['body'] = [];
 
-        $index = $this->index ? : $models[0]->searchableAs();
+        if ($models->count()) {
+            $index = $this->index ?: $models->first()->searchableAs();
 
-        $models->each(function($model) use (&$params, $index)
-        {
-            $params['body'][] = [
-                'update' => [
-                    '_id' => $model->getKey(),
-                    '_index' => $index,
-                    '_type' => $model->searchableAs(),
-                ]
-            ];
-            $params['body'][] = [
-                'doc' => $model->toSearchableArray(),
-                'doc_as_upsert' => true
-            ];
-        });
+            $models->each(function ($model) use (&$params, $index) {
+                $params['body'][] = [
+                    'update' => [
+                        '_id' => $model->getKey(),
+                        '_index' => $index,
+                        '_type' => $model->searchableAs(),
+                    ]
+                ];
+                $params['body'][] = [
+                    'doc' => $model->toSearchableArray(),
+                    'doc_as_upsert' => true
+                ];
+            });
 
-        $flag = ($this->elastic->bulk($params))['items'][0]['update'];
+            $flag = ($this->elastic->bulk($params))['items'][0]['update'];
 
-        if(in_array($flag['status'], [400])) {
-	        abort($flag['status'], $flag['error']['reason']);
+            if(in_array($flag['status'], [400])) {
+                abort($flag['status'], $flag['error']['reason']);
+            }
         }
     }
 
@@ -81,7 +82,7 @@ class ElasticsearchEngine extends Engine
         $params['body'] = [];
 
         if ($models->count()) {
-            $index = $this->index ? : $models[0]->searchableAs();
+            $index = $this->index ? : $models->first()->searchableAs();
 
             $models->each(function ($model) use (&$params, $index) {
                 $params['body'][] = [
