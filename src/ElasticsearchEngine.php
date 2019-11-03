@@ -79,20 +79,22 @@ class ElasticsearchEngine extends Engine
     public function delete($models)
     {
         $params['body'] = [];
-	    $index = $this->index ? : $models[0]->searchableAs();
 
-        $models->each(function($model) use (&$params, $index)
-        {
-            $params['body'][] = [
-                'delete' => [
-                    '_id' => $model->getKey(),
-                    '_index' => $index,
-                    '_type' => $model->searchableAs(),
-                ]
-            ];
-        });
+        if ($models->count()) {
+            $index = $this->index ? : $models[0]->searchableAs();
 
-        $this->elastic->bulk($params);
+            $models->each(function ($model) use (&$params, $index) {
+                $params['body'][] = [
+                    'delete' => [
+                        '_id' => $model->getKey(),
+                        '_index' => $index,
+                        '_type' => $model->searchableAs(),
+                    ]
+                ];
+            });
+
+            $this->elastic->bulk($params);
+        }
     }
 
     /**
